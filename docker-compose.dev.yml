@@ -1,12 +1,10 @@
-version: "3.9"
+version: '3.8'
 
 services:
   mongo:
     image: mongo:latest
     container_name: femflow-mongo
     restart: unless-stopped
-    ports:
-      - "27017:27017"
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: rootpassword
@@ -17,6 +15,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
   mongo-express:
     image: mongo-express:latest
     container_name: femflow-mongo-express
@@ -26,12 +25,29 @@ services:
     environment:
       ME_CONFIG_MONGODB_ADMINUSERNAME: root
       ME_CONFIG_MONGODB_ADMINPASSWORD: rootpassword
-      ME_CONFIG_MONGODB_SERVER: femflow-mongo
+      # 使用服务名 'mongo' 进行连接，这是 Docker Compose 的最佳实践
+      ME_CONFIG_MONGODB_SERVER: mongo
       ME_CONFIG_BASICAUTH_USERNAME: admin
       ME_CONFIG_BASICAUTH_PASSWORD: adminpassword
     depends_on:
-      - mongo
+      mongo:
+        # 等待 mongo 服务健康检查通过后再启动
+        condition: service_healthy
+
+  # --- 这是新增的服务 ---
+  mcp-server:
+    image: mongodb/mongodb-mcp-server:latest
+    container_name: femflow-mcp-server
+    restart: unless-stopped
+    ports:
+      - "10053:10053"
+    environment:
+      # 关键：这里的主机名是mongo服务的名称 "mongo"
+      MDB_MCP_CONNECTION_STRING: "mongodb://root:rootpassword@mongo:27017/"
+    depends_on:
+      mongo:
+        # 等待 mongo 服务健康检查通过后再启动
+        condition: service_healthy
 
 volumes:
   mongo_data:
-
